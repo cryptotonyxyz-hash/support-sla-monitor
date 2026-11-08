@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zuri Fragrances — Support SLA Monitor</title>
+<style>
+  :root { --green: #17452f; --green-bright: #2e7d32; --amber: #b45309; --red: #b91c1c; --ink: #1a1a1a; --muted: #666; --line: #e5e0d8; --bg: #f4f1ea; --card: #fff; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 0; }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 28px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -0.5px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 4px 0 20px; }
+  .refresh { padding: 9px 16px; border: 1px solid var(--green); border-radius: 8px; background: var(--green); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .refresh:hover { background: #0f3524; }
+  .updated { font-size: 12px; color: var(--muted); }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .kpi .label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+  .kpi .value { font-size: 32px; font-weight: 700; margin: 4px 0 2px; letter-spacing: -1px; }
+  .kpi .detail { font-size: 13px; color: var(--muted); }
+  .kpi.bad .value { color: var(--red); }
+  .kpi.warn .value { color: var(--amber); }
+  .kpi.good .value { color: var(--green-bright); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .panel h2 { margin: 0 0 4px; font-size: 16px; }
+  .panel .hint { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 10px; margin: 10px 0; font-size: 13px; }
+  .bar-track { background: #eee9df; border-radius: 6px; height: 12px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; background: var(--green); }
+  .bar-fill.bad { background: var(--red); }
+  .bar-fill.warn { background: var(--amber); }
+  .bar-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+  .pill.urgent { background: #fce8e6; color: var(--red); }
+  .pill.high { background: #fef3c7; color: var(--amber); }
+  .pill.normal { background: #e6f4ea; color: var(--green-bright); }
+  .pill.open { background: #e8eaf6; color: #3949ab; }
+  .pill.breach { background: #fce8e6; color: var(--red); }
+  .empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
+  .loading, .error { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 32px; text-align: center; color: var(--muted); font-size: 15px; }
+  .error { color: var(--red); }
+  footer { margin-top: 24px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  footer a { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Support SLA Monitor</h1>
+      <div class="sub">Zuri Fragrances — how fast the support team replies and resolves. Live from the tickets API.</div>
+    </div>
+    <div>
+      <button class="refresh" id="refresh-btn" type="button">Refresh</button>
+      <div class="updated" id="updated"></div>
+    </div>
+  </header>
+
+  <div id="loading" class="loading">Loading tickets from the API…<br><span style="font-size:13px">If the API was asleep it can take up to a minute to wake up.</span></div>
+  <div id="error" class="error" style="display:none"></div>
+  <div id="dash" style="display:none">
+
+    <div class="kpis">
+      <div class="kpi"><div class="label">Total tickets</div><div class="value" id="k-total">–</div><div class="detail" id="k-total-d"></div></div>
+      <div class="kpi"><div class="label">Open tickets</div><div class="value" id="k-open">–</div><div class="detail" id="k-open-d"></div></div>
+      <div class="kpi" id="kpi-fr"><div class="label">First reply on time</div><div class="value" id="k-fr">–</div><div class="detail" id="k-fr-d"></div></div>
+      <div class="kpi" id="kpi-res"><div class="label">Resolved on time</div><div class="value" id="k-res">–</div><div class="detail" id="k-res-d"></div></div>
+      <div class="kpi warn"><div class="label">Waiting for a first reply</div><div class="value" id="k-wait">–</div><div class="detail">all of them past their first-reply deadline</div></div>
+      <div class="kpi bad"><div class="label">Open &amp; past resolution deadline</div><div class="value" id="k-breach">–</div><div class="detail">of the open tickets are breaching</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>Slowest first reply, by category</h2>
+        <p class="hint">Average hours from a ticket arriving to the first reply, for tickets that got one.</p>
+        <div id="avg-cat"></div>
+      </div>
+      <div class="panel">
+        <h2>First-reply breaches, by category</h2>
+        <p class="hint">Tickets whose first reply came after its deadline, or never came.</p>
+        <div id="breach-cat"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:12px">
+      <h2>Oldest open tickets</h2>
+      <p class="hint">The tickets that have been waiting longest. These are the ones to clear first.</p>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Ticket</th><th>Customer</th><th>Category</th><th>Priority</th><th>Waiting</th><th>First reply due</th></tr></thead>
+        <tbody id="oldest-body"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Open tickets breaching right now</h2>
+      <p class="hint">Open tickets whose resolution deadline has already passed.</p>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Ticket</th><th>Customer</th><th>Category</th><th>Priority</th><th>Deadline was</th><th>Message</th></tr></thead>
+        <tbody id="breach-body"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <footer>
+      Data is live from the Support SLA Monitor API (<a href="/tickets">/tickets</a>). Compliance is measured against each
+      ticket's own SLA deadline: urgent gets a first reply in 4h and a resolution in 24h, high 12h / 48h, normal 24h / 72h.
+      Tickets are triaged by the API, logged to a Google Sheet, and urgent ones alert Slack. Demo data is synthetic, for the fictional brand Zuri Fragrances.
+    </footer>
+  </div>
+</div>
+<script>
+function parseDT(s) { return s ? new Date(s.replace(' ', 'T')) : null; }
+function hoursBetween(a, b) { return (b - a) / 3600000; }
+function fmtHours(h) { return h < 1 ? (h * 60).toFixed(0) + 'm' : h.toFixed(1) + 'h'; }
+function fmtDur(ms) {
+  const h = ms / 3600000;
+  if (h < 24) return h.toFixed(0) + 'h';
+  const d = Math.floor(h / 24);
+  return d + 'd ' + Math.round(h % 24) + 'h';
+}
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+async function load() {
+  const loading = document.getElementById('loading');
+  const error = document.getElementById('error');
+  const dash = document.getElementById('dash');
+  loading.style.display = 'block'; error.style.display = 'none'; dash.style.display = 'none';
+  let tickets;
+  try {
+    const res = await fetch('/tickets', { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('API returned ' + res.status);
+    tickets = await res.json();
+  } catch (e) {
+    loading.style.display = 'none';
+    error.style.display = 'block';
+    error.textContent = 'Could not load tickets from the API. It may be waking up (free tier sleeps after 15 minutes idle) — wait a moment and press Refresh. (' + e.message + ')';
+    return;
+  }
+  loading.style.display = 'none';
+  dash.style.display = 'block';
+  document.getElementById('updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  const now = new Date();
+  const open = tickets.filter(t => t.status === 'open');
+  const resolved = tickets.filter(t => t.status === 'resolved');
+
+  // First-response compliance: tickets that got a first reply.
+  const withReply = tickets.filter(t => t.first_response_at);
+  const frOnTime = withReply.filter(t => parseDT(t.first_response_at) <= parseDT(t.first_response_deadline));
+  const frPct = withReply.length ? (frOnTime.length / withReply.length * 100) : 0;
+
+  // Resolution compliance: tickets that got resolved.
+  const resOnTime = resolved.filter(t => t.resolved_at && parseDT(t.resolved_at) <= parseDT(t.resolution_deadline));
+  const resPct = resolved.length ? (resOnTime.length / resolved.length * 100) : 0;
+
+  // Waiting for a first reply.
+  const waiting = open.filter(t => !t.first_response_at);
+  // Open and past resolution deadline.
+  const breaching = open.filter(t => parseDT(t.resolution_deadline) < now);
+
+  document.getElementById('k-total').textContent = tickets.length;
+  document.getElementById('k-total-d').textContent = resolved.length + ' resolved · ' + open.length + ' open';
+  document.getElementById('k-open').textContent = open.length;
+  const byPri = {};
+  open.forEach(t => { byPri[t.priority] = (byPri[t.priority] || 0) + 1; });
+  document.getElementById('k-open-d').textContent =
+    (byPri.urgent || 0) + ' urgent · ' + (byPri.high || 0) + ' high · ' + (byPri.normal || 0) + ' normal';
+
+  document.getElementById('k-fr').textContent = frPct.toFixed(1) + '%';
+  document.getElementById('k-fr-d').textContent = frOnTime.length + ' of ' + withReply.length + ' first replies on time';
+  document.getElementById('kpi-fr').classList.add(frPct >= 80 ? 'good' : frPct >= 60 ? 'warn' : 'bad');
+
+  document.getElementById('k-res').textContent = resPct.toFixed(1) + '%';
+  document.getElementById('k-res-d').textContent = resOnTime.length + ' of ' + resolved.length + ' resolutions on time';
+  document.getElementById('kpi-res').classList.add(resPct >= 80 ? 'good' : resPct >= 60 ? 'warn' : 'bad');
+
+  document.getElementById('k-wait').textContent = waiting.length;
+  document.getElementById('k-breach').textContent = breaching.length;
+
+  // Avg first response by category.
+  const catSum = {}, catN = {};
+  withReply.forEach(t => {
+    const h = hoursBetween(parseDT(t.received_at), parseDT(t.first_response_at));
+    catSum[t.category] = (catSum[t.category] || 0) + h;
+    catN[t.category] = (catN[t.category] || 0) + 1;
+  });
+  const catAvg = Object.keys(catSum).map(c => ({ c, avg: catSum[c] / catN[c], n: catN[c] })).sort((a, b) => b.avg - a.avg);
+  const maxAvg = catAvg.length ? catAvg[0].avg : 1;
+  document.getElementById('avg-cat').innerHTML = catAvg.length ? catAvg.map(x =>
+    '<div class="bar-row"><span>' + esc(x.c) + '</span><div class="bar-track"><div class="bar-fill' +
+    (x.avg >= 15 ? ' bad' : x.avg >= 10 ? ' warn' : '') + '" style="width:' + Math.max(2, x.avg / maxAvg * 100).toFixed(1) + '%"></div></div>' +
+    '<span class="bar-val">' + x.avg.toFixed(1) + 'h · ' + x.n + '</span></div>'
+  ).join('') : '<div class="empty">No first replies yet.</div>';
+
+  // First-reply breaches by category (late reply, or no reply and past deadline).
+  const breachCat = {};
+  tickets.forEach(t => {
+    const late = t.first_response_at
+      ? parseDT(t.first_response_at) > parseDT(t.first_response_deadline)
+      : parseDT(t.first_response_deadline) < now;
+    if (late) breachCat[t.category] = (breachCat[t.category] || 0) + 1;
+  });
+  const bc = Object.keys(breachCat).map(c => ({ c, n: breachCat[c] })).sort((a, b) => b.n - a.n);
+  const maxB = bc.length ? bc[0].n : 1;
+  document.getElementById('breach-cat').innerHTML = bc.length ? bc.map(x =>
+    '<div class="bar-row"><span>' + esc(x.c) + '</span><div class="bar-track"><div class="bar-fill bad" style="width:' + Math.max(2, x.n / maxB * 100).toFixed(1) + '%"></div></div>' +
+    '<span class="bar-val">' + x.n + '</span></div>'
+  ).join('') : '<div class="empty">No first-reply breaches.</div>';
+
+  // Oldest open tickets.
+  const oldest = open.slice().sort((a, b) => parseDT(a.received_at) - parseDT(b.received_at)).slice(0, 8);
+  document.getElementById('oldest-body').innerHTML = oldest.length ? oldest.map(t =>
+    '<tr><td><strong>' + esc(t.ticket_id) + '</strong></td><td>' + esc(t.customer_name) + '</td><td>' + esc(t.category) + '</td>' +
+    '<td><span class="pill ' + esc(t.priority) + '">' + esc(t.priority) + '</span></td>' +
+    '<td>' + fmtDur(now - parseDT(t.received_at)) + '</td><td>' + esc(t.first_response_deadline) + '</td></tr>'
+  ).join('') : '<tr><td colspan="6" class="empty">No open tickets.</td></tr>';
+
+  // Open tickets breaching resolution now.
+  const breachList = breaching.slice().sort((a, b) => parseDT(a.resolution_deadline) - parseDT(b.resolution_deadline)).slice(0, 10);
+  document.getElementById('breach-body').innerHTML = breachList.length ? breachList.map(t =>
+    '<tr><td><strong>' + esc(t.ticket_id) + '</strong></td><td>' + esc(t.customer_name) + '</td><td>' + esc(t.category) + '</td>' +
+    '<td><span class="pill ' + esc(t.priority) + '">' + esc(t.priority) + '</span></td>' +
+    '<td><span class="pill breach">' + esc(t.resolution_deadline) + '</span></td><td>' + esc(t.message_text) + '</td></tr>'
+  ).join('') : '<tr><td colspan="6" class="empty">Nothing breaching right now.</td></tr>';
+}
+
+document.getElementById('refresh-btn').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>

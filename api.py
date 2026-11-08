@@ -62,6 +62,19 @@ def serve_intake_form():
     return (HERE / "intake-form.html").read_text(encoding="utf-8")
 
 
+@app.get("/dashboard", response_class=HTMLResponse)
+def serve_dashboard():
+    """The manager's SLA dashboard.
+
+    A single page that fetches /tickets from this API and computes the
+    KPIs live in the browser: first-response and resolution compliance,
+    waiting and breaching tickets, slowest first reply by category,
+    and the oldest open tickets. Same origin as the API, so no CORS
+    is needed.
+    """
+    return (HERE / "dashboard.html").read_text(encoding="utf-8")
+
+
 class TicketIn(BaseModel):
     customer_name: str
     channel: str
