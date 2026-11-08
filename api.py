@@ -42,12 +42,24 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 HERE = Path(__file__).resolve().parent
 DB_PATH = HERE / "sla_monitor.db"
 
 app = FastAPI(title="Support SLA Monitor API")
+
+
+@app.get("/", response_class=HTMLResponse)
+def serve_intake_form():
+    """The customer-facing Contact Support form.
+
+    Served from the API itself so the form posts to /tickets on the
+    same origin (no CORS needed). Fill it in and submit to create a
+    new ticket with status 'new', ready for Make to pick up.
+    """
+    return (HERE / "intake-form.html").read_text(encoding="utf-8")
 
 
 class TicketIn(BaseModel):

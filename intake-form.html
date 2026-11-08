@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zuri Fragrances — Contact Support</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f4f1ea; color: #222; margin: 0; padding: 40px 16px; }
+  .card { max-width: 520px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  p.sub { margin: 0 0 20px; color: #666; font-size: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 4px; }
+  input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font: inherit; }
+  textarea { min-height: 90px; resize: vertical; }
+  button { margin-top: 20px; width: 100%; padding: 12px; border: 0; border-radius: 8px; background: #17452f; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover { background: #0f3524; }
+  button:disabled { opacity: .6; cursor: default; }
+  #result { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 14px; display: none; }
+  #result.ok { display: block; background: #e6f4ea; color: #137333; }
+  #result.err { display: block; background: #fce8e6; color: #a50e0e; }
+  #again { display: none; margin-top: 12px; width: 100%; padding: 10px; border: 1px solid #17452f; border-radius: 8px; background: #fff; color: #17452f; font: inherit; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Contact Support</h1>
+  <p class="sub">Zuri Fragrances — we reply within one working day.</p>
+  <form id="ticket-form">
+    <label for="customer_name">Your name</label>
+    <input id="customer_name" required placeholder="e.g. Adaeze Nwosu">
+
+    <label for="channel">Where did you reach us?</label>
+    <select id="channel">
+      <option>WhatsApp</option>
+      <option>Instagram</option>
+      <option>Website chat</option>
+      <option>Email</option>
+    </select>
+
+    <label for="category">What is this about?</label>
+    <select id="category">
+      <option value="delivery">Delivery</option>
+      <option value="returns">Returns</option>
+      <option value="price">Price</option>
+      <option value="availability">Availability</option>
+      <option value="product advice">Product advice</option>
+    </select>
+
+    <label for="sentiment">How are you feeling about this?</label>
+    <select id="sentiment">
+      <option value="negative">Unhappy</option>
+      <option value="neutral" selected>Just asking</option>
+      <option value="positive">Happy</option>
+    </select>
+
+    <label for="product_mentioned">Product (optional)</label>
+    <input id="product_mentioned" placeholder="e.g. Velvet Rose">
+
+    <label for="message_text">Your message</label>
+    <textarea id="message_text" required placeholder="Tell us what happened or what you need..."></textarea>
+
+    <button type="submit" id="submit-btn">Send to support</button>
+  </form>
+  <div id="result"></div>
+  <button id="again" type="button">Send another message</button>
+</div>
+<script>
+const form = document.getElementById('ticket-form');
+const result = document.getElementById('result');
+const again = document.getElementById('again');
+const submitBtn = document.getElementById('submit-btn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+  const body = {
+    customer_name: document.getElementById('customer_name').value.trim(),
+    channel: document.getElementById('channel').value,
+    category: document.getElementById('category').value,
+    sentiment: document.getElementById('sentiment').value,
+    product_mentioned: document.getElementById('product_mentioned').value.trim(),
+    message_text: document.getElementById('message_text').value.trim()
+  };
+  try {
+    const res = await fetch('/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('Server returned ' + res.status);
+    const ticket = await res.json();
+    result.className = 'ok';
+    result.textContent = 'Thanks! Ticket ' + ticket.ticket_id + ' received. Our team will reply soon.';
+    form.style.display = 'none';
+    again.style.display = 'block';
+  } catch (err) {
+    result.className = 'err';
+    result.textContent = 'Could not send your message. Please check your connection and try again. (' + err.message + ')';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Send to support';
+  }
+});
+
+again.addEventListener('click', () => {
+  form.reset();
+  form.style.display = 'block';
+  again.style.display = 'none';
+  result.className = '';
+  result.textContent = '';
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Send to support';
+});
+</script>
+</body>
+</html>
